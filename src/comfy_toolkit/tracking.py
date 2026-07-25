@@ -8,11 +8,9 @@ ComfyUI announces completion on its WebSocket channel *before* the matching
     ws.recv()                      # "execution_success"
     result = client.result(pid)    # None, or completed-with-zero-images
 
-fails intermittently — more often on big images, video encodes, slow disks, and
-network shares, because those widen the window between "the executor is done"
-and "the history entry has been written". It is a classic
-time-of-check/time-of-use race, and it is why so many ComfyUI integrations
-carry a mysterious ``sleep(2)``.
+fails intermittently: there is a window between "the executor is done" and "the
+history entry has been written", and how wide that window gets is not something
+the client can know in advance. It is a classic time-of-check/time-of-use race.
 
 The fix
 -------
@@ -47,8 +45,10 @@ __all__ = [
 #: How many times to re-read ``/history`` after the socket says "done".
 HISTORY_RETRY_ATTEMPTS = 20
 
-#: Seconds between those retries. 20 x 1.0s gives a ~20 second budget, which
-#: comfortably covers video muxing on a spinning disk.
+#: Seconds between those retries. 20 x 1.0s gives a ~20 second budget. The
+#: budget only matters when the entry never appears at all: on the happy path
+#: the first read succeeds and nothing is waited for. Raise
+#: ``history_retries`` if your setup needs a longer grace period.
 HISTORY_RETRY_DELAY = 1.0
 
 
@@ -113,7 +113,13 @@ def submit_and_track(
             node, and with ``None`` when the graph finishes.
         client_id: Override the client's identifier for this run.
         expect: ``"images"``, ``"videos"`` or ``"any"`` — which outputs must be
-            present before the result counts as ready.
+            present before the result counts as ready. **Defaults to
+            ``"images"``, so a video workflow must pass ``expect="videos"``**
+            (or ``"any"``). ``VHS_VideoCombine`` writes to the ``gifs`` /
+            ``videos`` output keys and never to ``images``, so leaving the
+            default in place makes a job that succeeded raise
+            :class:`~comfy_toolkit.errors.HistoryNotReadyError` once the retry
+            budget runs out.
         overall_timeout: Seconds to spend on the socket phase.
         recv_timeout: Socket read timeout. On each read timeout the history
             endpoint is checked as a backstop, so a dropped socket degrades to

@@ -2,18 +2,23 @@
 
 Usage:
     python examples/03_dynamic_lora.py path/to/workflow_api.json
+    python examples/03_dynamic_lora.py --dry-run path/to/workflow_api.json
 
 The workflow does NOT need any LoraLoader node in it. Start from a plain
 checkpoint graph; the loaders are appended at run time and the downstream
 model/clip edges are rewired for you.
 
-Contrast with the usual approach of pre-wiring every LoRA at strength 0: those
-loaders still merge weights, still cost load time and VRAM, and stacking many
-of them visibly softens output. Injecting keeps the graph minimal.
+Contrast with the usual approach of pre-wiring every LoRA at strength 0. That
+is not a quality problem — ComfyUI's LoraLoader early-returns on strength 0
+without ever reading the file, so an unused loader costs nothing. It is a
+workflow problem: pre-wiring fixes the LoRA list when the graph is drawn, so
+this catalog could not live in code, adding an entry would mean re-exporting
+the API JSON, and the code driving it would have to hardcode node ids that
+break on the next re-save. Injection keeps the graph clean and the list here.
 """
 
+import argparse
 import json
-import sys
 
 from comfy_toolkit import ComfyClient, customize, find_lora_nodes
 
@@ -26,10 +31,11 @@ LORA_CATALOG = {
 }
 
 
-def main(workflow_path: str) -> int:
+def main(workflow_path: str, dry_run: bool = False) -> int:
     client = ComfyClient()
 
-    # Whatever your UI collected. Zero-strength entries are simply not built.
+    # Whatever your UI collected. Zero-strength entries are simply not built,
+    # so the submitted graph shows exactly what this request asked for.
     requested = {
         "MyStyleLoRA": 0.7,
         "DetailBoost": 0.35,
@@ -54,7 +60,7 @@ def main(workflow_path: str) -> int:
             node_id, inputs["lora_name"], inputs["strength_model"]))
 
     # Inspect the rewired graph without submitting anything:
-    if "--dry-run" in sys.argv:
+    if dry_run:
         print(json.dumps(workflow, indent=2, ensure_ascii=False))
         return 0
 
@@ -68,8 +74,16 @@ def main(workflow_path: str) -> int:
     return 0
 
 
+def parse_args(argv=None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Inject LoRAs into a plain checkpoint workflow.")
+    parser.add_argument("workflow",
+                        help="path to an API-format workflow JSON")
+    parser.add_argument("--dry-run", action="store_true",
+                        help="print the rewired graph instead of submitting it")
+    return parser.parse_args(argv)
+
+
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print(__doc__)
-        raise SystemExit(2)
-    raise SystemExit(main(sys.argv[1]))
+    args = parse_args()
+    raise SystemExit(main(args.workflow, dry_run=args.dry_run))

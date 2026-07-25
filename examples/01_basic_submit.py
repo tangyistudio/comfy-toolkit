@@ -39,8 +39,15 @@ def main(workflow_path: str) -> int:
     result = client.wait(prompt_id, expect="images", max_wait=300)
     for image in result["images"]:
         print("  ->", image["filename"])
-        # Fetch the bytes through the server, so this works remotely too:
-        # client.save(image, "./downloads")
+        # Fetch the bytes through the server, so this works remotely too.
+        # Give save() a full path including the filename: a bare directory
+        # only does the right thing if it already exists, and otherwise every
+        # image in this loop would be written over the same file.
+        #
+        #   from pathlib import Path
+        #   out = Path("./downloads")
+        #   out.mkdir(parents=True, exist_ok=True)
+        #   client.save(image, out / image["filename"])
 
     return 0
 

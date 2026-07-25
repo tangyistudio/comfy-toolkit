@@ -6,8 +6,12 @@ Three problems it exists to solve:
    history entry is readable. :func:`submit_and_track` retries until real
    outputs appear instead of sleeping and hoping.
 2. **LoRA stacking.** :func:`inject_loras` appends only the LoRA loaders a
-   request actually needs and rewires the graph, instead of pre-wiring
-   everything at strength 0 and degrading quality.
+   request actually needs and rewires the graph, so any plain checkpoint
+   workflow — including one a user drew — can take LoRAs decided at runtime.
+   The alternative, pre-wiring every candidate at strength 0, is harmless to
+   image quality (ComfyUI early-returns on strength 0) but forces the LoRA
+   list to be fixed when the graph is drawn and drives callers into hardcoded
+   node ids.
 3. **Video outputs.** ``VHS_VideoCombine`` writes to ``gifs`` / ``videos``, not
    ``images``. :func:`extract_videos` reads both.
 
@@ -34,6 +38,8 @@ from .errors import (
     WebSocketUnavailableError,
 )
 from .inject import (
+    BATCH_SEED_SPACING,
+    batch_seeds,
     customize,
     find_model_chain_tail,
     inject_loras,
@@ -94,6 +100,8 @@ __all__ = [
     "set_input_image",
     "find_model_chain_tail",
     "random_seed",
+    "batch_seeds",
+    "BATCH_SEED_SPACING",
     # nodes
     "find_nodes_by_class",
     "find_node_by_class",

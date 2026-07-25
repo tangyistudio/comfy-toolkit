@@ -19,11 +19,18 @@ Why title-based lookup?
     edit. Titles are matched case-insensitively against both English and
     Chinese keywords, because bilingual workflow authors are common.
 
-Why the positional fallback?
+Why the structural fallback?
     Titles are optional. When a workflow has untouched default titles, the
     graph itself still says which encoder is positive: ``KSampler.inputs
     ["positive"]`` points straight at it. :func:`find_prompt_nodes` uses titles
     first and falls back to following those edges.
+
+    Provenance, since the two halves are not equally battle-tested: the
+    bilingual title matching was carried over from production code, where
+    workflows authored in mixed English/Chinese made it necessary. The
+    edge-following fallback was designed for this package to cover workflows
+    it does not control, and is backed by unit tests rather than by production
+    mileage.
 """
 
 from typing import Dict, List, Optional, Sequence, Tuple
@@ -77,9 +84,20 @@ NEGATIVE_TITLE_HINTS: Tuple[str, ...] = (
 #: and ``SamplerCustom`` all qualify.
 SAMPLER_CLASS_HINTS: Tuple[str, ...] = ("KSampler", "SamplerCustom")
 
-#: Input names that carry prompt text, in preference order. Vanilla
-#: ``CLIPTextEncode`` uses ``text``; several editor/instruct encoders use
-#: ``prompt``.
+#: Input names that carry prompt text, in preference order.
+#:
+#: There is no single convention, which is why this is a list and not a
+#: constant. Vanilla ``CLIPTextEncode`` — and everything modelled on it —
+#: names the field ``text``. The image-editing encoders that ship with the
+#: Qwen-Image-Edit node pack (``TextEncodeQwenImageEdit``,
+#: ``TextEncodeQwenImageEditPlus``) name it ``prompt`` instead. Code that
+#: writes ``inputs["text"]`` unconditionally silently does nothing on the
+#: second family: the node keeps whatever prompt was baked into the exported
+#: JSON, the job succeeds, and the output has nothing to do with the request.
+#:
+#: :func:`text_input_key` therefore picks per node, by inspecting which key is
+#: actually present, rather than by matching ``class_type`` against a list
+#: that would go stale with every new node pack.
 TEXT_INPUT_KEYS: Tuple[str, ...] = ("text", "prompt")
 
 

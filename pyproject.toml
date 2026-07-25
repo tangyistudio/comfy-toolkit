@@ -31,12 +31,19 @@ ws = ["websocket-client>=1.0"]
 dev = ["pytest>=7.0", "websocket-client>=1.0"]
 
 [project.urls]
-Homepage = "https://github.com/TangyiStudio/comfy-toolkit"
-Source = "https://github.com/TangyiStudio/comfy-toolkit"
-Issues = "https://github.com/TangyiStudio/comfy-toolkit/issues"
+Homepage = "https://github.com/tangyistudio/comfy-toolkit"
+Source = "https://github.com/tangyistudio/comfy-toolkit"
+Issues = "https://github.com/tangyistudio/comfy-toolkit/issues"
 
+# The build backend is hatchling, which ships every file under the package
+# directory — including the PEP 561 `py.typed` marker that backs the
+# "Typing :: Typed" classifier above. (There is no [tool.setuptools] section
+# here; a setuptools package-data table would be dead config.)
 [tool.hatch.build.targets.wheel]
 packages = ["src/comfy_toolkit"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/", "tests/", "examples/", "README.md", "LICENSE"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

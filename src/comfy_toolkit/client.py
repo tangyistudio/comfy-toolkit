@@ -171,16 +171,25 @@ class ComfyClient:
     def queue_status(self, timeout: float = 3.0) -> Dict[str, int]:
         """Return ``{"running": N, "pending": N}``.
 
-        Never raises: an unreachable server reads as an empty queue, which is
-        what a status widget wants.
+        Designed for status widgets, so it degrades to an empty queue rather
+        than raising. That covers an unreachable server, a reply that is not
+        JSON at all (a reverse-proxy error page, a captive portal), and a JSON
+        reply whose shape is unexpected.
         """
+        empty = {"running": 0, "pending": 0}
         try:
             queue = self.get("/queue", timeout=timeout)
-        except ComfyConnectionError:
-            return {"running": 0, "pending": 0}
+        except (ComfyConnectionError, ValueError):
+            # ValueError covers json.JSONDecodeError and a bad UTF-8 decode:
+            # a non-JSON body is indistinguishable from "no server" here.
+            return empty
+        if not isinstance(queue, dict):
+            return empty
+        running = queue.get("queue_running")
+        pending = queue.get("queue_pending")
         return {
-            "running": len(queue.get("queue_running") or []),
-            "pending": len(queue.get("queue_pending") or []),
+            "running": len(running) if isinstance(running, (list, tuple)) else 0,
+            "pending": len(pending) if isinstance(pending, (list, tuple)) else 0,
         }
 
     def interrupt(self, timeout: float = 5.0) -> None:
