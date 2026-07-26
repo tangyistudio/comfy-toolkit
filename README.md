@@ -118,17 +118,17 @@ videos = client.wait_for_videos(prompt_id)   # reads gifs + videos, filters by e
 
 ## Install
 
-Not on PyPI yet (release pending) — install from git:
-
 ```bash
-# core, zero dependencies
-pip install git+https://github.com/tangyistudio/comfy-toolkit
-
-# + websocket-client, for live progress via submit_and_track()
-pip install "comfy-toolkit[ws] @ git+https://github.com/tangyistudio/comfy-toolkit"
+pip install comfy-toolkit
 ```
 
-Once it is published, `pip install comfy-toolkit` / `pip install "comfy-toolkit[ws]"` will work as usual.
+Live progress tracking needs one optional dependency:
+
+```bash
+pip install "comfy-toolkit[ws]"
+```
+
+Everything else is standard library only.
 
 ## Quickstart
 
